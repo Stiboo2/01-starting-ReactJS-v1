@@ -1,0 +1,39 @@
+pip install fastapi uvicorn langchain langchain-community
+
+project-root/
+├── backend/
+│   ├── main.py
+│   ├── rag.py
+│   ├── knowledge-base/
+│   │   ├── employees/
+│   │   └── products/
+│   └── .env
+│
+├── frontend/                 # Vite React app
+│   ├── node_modules/
+│   ├── public/
+│   │   └── vite.svg
+│   │
+│   ├── src/
+│   │   ├── assets/
+│   │   │   └── react-core-concepts.png
+│   │   │
+│   │   ├── App.jsx           # Main React component (UI + API call)
+│   │   ├── index.jsx         # React entry point
+│   │   ├── index.css         # Styling
+│   │
+│   ├── index.html            # Root HTML
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── vite.config.js
+│   └── .gitignore
+│
+└── README.md                 # Project documentation (optional)
+
+React (Vite)
+   ↓ fetch/axios
+FastAPI (Python)
+   ↓
+LangChain ChatOllama
+   ↓
+Ollama (llama3.2)
