@@ -318,31 +318,54 @@ def retrieve_relevant_context(query: str, k: int = 5):
         return []
 
 def create_rag_prompt(query: str, context: List[Dict]):
-    """Create a prompt with retrieved context"""
+    """Create a prompt with retrieved context - enhanced for cross-file relationships"""
     if not context:
         return query
     
-    # Format context
-    context_text = "\n\n".join([
-        f"Source: {item['metadata'].get('source', 'Unknown')}\n"
-        f"Sheet: {item['metadata'].get('sheet', 'Unknown')}\n"
-        f"Content: {item['content']}"
-        for item in context
-    ])
+    # Group context by source file for better organization
+    context_by_file = {}
+    for item in context:
+        source = item['metadata'].get('source', 'Unknown')
+        if source not in context_by_file:
+            context_by_file[source] = []
+        context_by_file[source].append(item)
     
-    # Create RAG 
-    promptrag_prompt = f"""You are a helpful assistant analyzing Excel spreadsheet data. Use the information from the Excel files below to answer questions accurately.
+    # Format context with clear file separation
+    context_text = ""
+    for source, items in context_by_file.items():
+        context_text += f"\n{'='*60}\n"
+        context_text += f"📁 FILE: {source}\n"
+        context_text += f"{'='*60}\n"
+        for item in items:
+            context_text += f"Sheet: {item['metadata'].get('sheet', 'Unknown')}\n"
+            context_text += f"Content:\n{item['content']}\n\n"
+    
+    # Create enhanced RAG prompt
+    rag_prompt = f"""You are a helpful assistant analyzing Excel spreadsheet data. You have access to MULTIPLE Excel files that may contain related information.
 
-
-Context from documents:
+📊 **Excel Data Context (from all files):**
 {context_text}
 
-Question: {query}
+❓ **Question:** {query}
 
-Please answer the question based on the context provided above. If the answer cannot be found in the context, say so politely and suggest what information might be helpful.
+📌 **Instructions:**
+- **CRITICAL:** Look for information ACROSS ALL PROVIDED Excel files - they contain related business data
+- **Cross-reference between files:** 
+  * Customers file contains client information and account managers
+  * Employees file contains employee details including managers
+  * Products file contains inventory and product information
+- When asked about "manager of client X":
+  1. First find the client in customers file to get the account manager name
+  2. Then find that manager in employees file to get their details (salary, position, department)
+  3. Combine information from BOTH files to provide complete answer
+- If an ID appears in one file, search ALL files for that ID or related names
+- Present answers with clear references to which file and sheet the information came from
+- Be precise with names, IDs, and numerical values
+
+**Answer:**
 """
     
-    return promptrag_prompt
+    return rag_prompt
 
 def create_chain():
     """Create the base chain"""
@@ -417,7 +440,6 @@ async def chat(req: ChatRequest):
         
         # If RAG is enabled, retrieve context first
         if req.use_rag and vector_store:
-            context = retrieve_relevant_context(user_query, k=5)
             if context:
                 # Enhance the query with context
                 enhanced_query = create_rag_prompt(user_query, context)
